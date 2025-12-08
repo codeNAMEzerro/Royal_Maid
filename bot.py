@@ -86,64 +86,45 @@ def determine_winner(p1, p2):
     return "p1" if rules[p1] == p2 else "p2"
 
 
-class RematchView(View):
-    def __init__(self, player1, player2):
-        super().__init__(timeout=20)
-        self.p1 = player1
-        self.p2 = player2
-
-    @discord.ui.button(label="🔁 Rematch", style=discord.ButtonStyle.primary)
-    async def rematch(self, interaction: discord.Interaction, button: Button):
-        if interaction.user not in [self.p1, self.p2]:
-            return await interaction.response.send_message(
-                "Kamu bukan bagian duel ini!", ephemeral=True
-            )
-
-        await interaction.response.edit_message(
-            content=(
-                f"🔥 **REMATCH DIMULAI!**\n"
-                f"{self.p1.mention} VS {self.p2.mention}\n"
-                "Pilih gerakan kalian kembali 👇"
-            ),
-            view=RPSView(self.p1, self.p2)
-        )
-        self.stop()
-
-
 class RPSView(View):
     def __init__(self, p1, p2):
         super().__init__(timeout=30)
         self.p1 = p1
         self.p2 = p2
         self.picks = {}
+        self.result_message = None
 
-    async def reveal_result(self, interaction):
-        winner = determine_winner(
-            self.picks[self.p1.id], self.picks[self.p2.id]
-        )
+    async def reveal_result(self):
+        p1_choice = self.picks[self.p1.id]
+        p2_choice = self.picks[self.p2.id]
+        winner = determine_winner(p1_choice, p2_choice)
 
-        # Update skor
         if winner == "p1":
             scores[self.p1.id] = scores.get(self.p1.id, 0) + 1
-            result_text = f"🏆 {self.p1.mention} MENANG!\n🎙️ {random.choice(win_lines)}"
+            result_text = (
+                f"🧍 {self.p1.mention}: **{p1_choice}**\n"
+                f"🧑‍💻 {self.p2.mention}: **{p2_choice}**\n\n"
+                f"🏆 {self.p1.mention} MENANG!\n🎙️ {random.choice(win_lines)}"
+            )
         elif winner == "p2":
             scores[self.p2.id] = scores.get(self.p2.id, 0) + 1
-            result_text = f"🏆 {self.p2.mention} MENANG!\n🎙️ {random.choice(lose_lines)}"
+            result_text = (
+                f"🧍 {self.p1.mention}: **{p1_choice}**\n"
+                f"🧑‍💻 {self.p2.mention}: **{p2_choice}**\n\n"
+                f"🏆 {self.p2.mention} MENANG!\n🎙️ {random.choice(lose_lines)}"
+            )
         else:
-            result_text = "⚔️ **Seri!** Tidak ada yang menang."
+            result_text = (
+                f"🧍 {self.p1.mention}: **{p1_choice}**\n"
+                f"🧑‍💻 {self.p2.mention}: **{p2_choice}**\n\n"
+                "⚔️ Seri!"
+            )
 
-        await interaction.edit_original_response(
-            content=(
-                f"🧍 {self.p1.mention}: **{self.picks[self.p1.id]}**\n\n"
-                f"🧑‍💻 {self.p2.mention}: **{self.picks[self.p2.id]}**\n\n"
-                f"{result_text}"
-            ),
-            view=RematchView(self.p1, self.p2)
-        )
+        await self.result_message.edit(content=result_text, view=RematchView(self.p1, self.p2))
         self.stop()
 
-    async def countdown_animation(self, interaction):
-        msg = await interaction.original_response()
+    async def countdown(self):
+        msg = self.result_message
         for num in ["3️⃣", "2️⃣", "1️⃣", "🎯"]:
             await asyncio.sleep(0.7)
             await msg.edit(content=f"{num}...")
@@ -155,21 +136,45 @@ class RPSView(View):
     async def select_move(self, interaction: discord.Interaction, select: Select):
         if interaction.user not in [self.p1, self.p2]:
             return await interaction.response.send_message(
-                "Kamu bukan bagian duel ini!", ephemeral=True
-            )
+                "Duel ini bukan untukmu!", ephemeral=True)
 
         pick = choices[select.values[0]]
         self.picks[interaction.user.id] = pick
 
         await interaction.response.send_message(
-            f"Kamu pilih **{pick}** ✔",
+            f"Kamu memilih **{pick}** ✔",
             ephemeral=True
         )
 
+        # Jika dua pemain sudah memilih
         if len(self.picks) == 2:
-            await asyncio.sleep(1)
-            await self.countdown_animation(interaction)
-            await self.reveal_result(interaction)
+            # Buat pesan publik (semua bisa lihat)
+            self.result_message = await interaction.channel.send("🕛 Menghitung hasil...")
+            await self.countdown()
+            await self.reveal_result()
+
+
+class RematchView(View):
+    def __init__(self, p1, p2):
+        super().__init__(timeout=20)
+        self.p1 = p1
+        self.p2 = p2
+
+    @discord.ui.button(label="🔁 Rematch", style=discord.ButtonStyle.primary)
+    async def rematch(self, interaction: discord.Interaction, button: Button):
+        if interaction.user not in [self.p1, self.p2]:
+            return await interaction.response.send_message(
+                "Hanya peserta duel yang bisa rematch!", ephemeral=True)
+
+        await interaction.response.edit_message(
+            content=(
+                f"🔥 REMATCH DIMULAI!\n"
+                f"{self.p1.mention} VS {self.p2.mention}\n"
+                "Pilih gerakan kembali 👇"
+            ),
+            view=RPSView(self.p1, self.p2)
+        )
+
 
 
 # ================= COMMAND START DUEL ================= #
