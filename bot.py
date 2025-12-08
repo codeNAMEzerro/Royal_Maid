@@ -26,10 +26,9 @@ lose_lines = [
 ]
 
 # ================= SATPAM VOICE PROTECT 🎧 ================= #
-AUDIO_URL = "https://raw.githubusercontent.com/DUNCTECH/discord-silence/master/silence.opus"
+# Silent audio dari file lokal
+SILENT_AUDIO = "audio/silence.opus"
 
-
-# ================= SATPAM VOICE PROTECT 🎧 ================= #
 
 @bot.event
 async def on_ready():
@@ -44,11 +43,9 @@ async def satpam(ctx):
     channel = ctx.author.voice.channel
     voice_client = ctx.voice_client
 
-    # Jika bot sudah di channel yang sama
     if voice_client and voice_client.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
-    # Pindah atau join
     if voice_client:
         await voice_client.move_to(channel)
     else:
@@ -56,14 +53,14 @@ async def satpam(ctx):
 
     await ctx.send("Satpam masuk voice! 🔊")
 
-    # Jika sedang play, hentikan dulu
+    # Stop audio jika sedang jalan
     if voice_client.is_playing():
         voice_client.stop()
 
+    # Load audio dari file lokal
     try:
-        # Load silent audio OPUS (lebih stabil & bisa loop aman)
         source = discord.FFmpegOpusAudio(
-            AUDIO_URL,
+            SILENT_AUDIO,
             before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
             options="-vn"
         )
@@ -71,16 +68,17 @@ async def satpam(ctx):
         print("FFmpeg error:", e)
         return await ctx.send("Gagal memainkan audio silent! ❌")
 
-    # Loop otomatis saat selesai
-    def loop(error):
-        if error:
-            print("Error:", error)
+    # Loop otomatis
+    def loop(err):
+        if err:
+            print("Loop error:", err)
         try:
-            voice_client.play(source, after=loop)
+            vc = ctx.voice_client
+            if vc and not vc.is_playing():
+                vc.play(discord.FFmpegOpusAudio(SILENT_AUDIO), after=loop)
         except:
             pass
 
-    # Mulai play
     voice_client.play(source, after=loop)
 
 
@@ -92,7 +90,6 @@ async def tidur(ctx):
         await ctx.send("Satpam izin tidur dulu 😴")
     else:
         await ctx.send("Satpam tidak ada di voice!")
-
 # ================= MINIGAME BATU KERTAS GUNTING 🎮 ================= #
 
 choices = {
