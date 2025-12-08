@@ -26,8 +26,9 @@ lose_lines = [
 ]
 
 # ================= SATPAM VOICE PROTECT 🎧 ================= #
-SILENT_FILE = "audio/silence.opus"
-
+@bot.event
+async def on_ready():
+    print(f"Bot online sebagai {bot.user}")
 
 @bot.command()
 async def satpam(ctx):
@@ -37,11 +38,11 @@ async def satpam(ctx):
     channel = ctx.author.voice.channel
     vc = ctx.voice_client
 
-    # Jika sudah di channel tersebut
+    # Jika sudah di sana
     if vc and vc.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
-    # Connect atau move
+    # Pindah atau masuk
     if vc:
         await vc.move_to(channel)
     else:
@@ -49,29 +50,20 @@ async def satpam(ctx):
 
     await ctx.send("Satpam masuk voice! 🔊")
 
-    # Stop jika ada audio sebelumnya
-    if vc.is_playing():
-        vc.stop()
+    # Jalankan anti-disconnect loop
+    bot.loop.create_task(keepalive(vc))
 
-    # Loop audio
-    def loop(err):
-        if err:
-            print("loop error:", err)
-        vcc = ctx.voice_client
-        if vcc:
-            try:
-                vcc.play(
-                    discord.FFmpegPCMAudio(SILENT_FILE),
-                    after=loop
-                )
-            except:
-                pass
 
-    try:
-        vc.play(discord.FFmpegPCMAudio(SILENT_FILE), after=loop)
-    except Exception as e:
-        print("FFmpeg error:", e)
-        return await ctx.send("⚠ FFmpeg tidak ditemukan!")
+async def keepalive(vc):
+    """Anti disconnect tanpa audio dan tanpa FFmpeg."""
+    while vc.is_connected():
+        try:
+            # Kirim heartbeat paket kosong
+            vc.send_audio_packet(b'\xF8\xFF\xFE')  
+        except Exception as e:
+            print("heartbeat error:", e)
+
+        await asyncio.sleep(10)  # interval aman 10 detik
 
 
 @bot.command()
@@ -82,7 +74,6 @@ async def tidur(ctx):
         await ctx.send("Satpam izin tidur 😴")
     else:
         await ctx.send("Satpam tidak ada di voice!")
-
         
 # ================= MINIGAME BATU KERTAS GUNTING 🎮 ================= #
 
