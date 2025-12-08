@@ -38,48 +38,43 @@ async def satpam(ctx):
     channel = ctx.author.voice.channel
     vc = ctx.voice_client
 
-    # Jika sudah di sana
+    # Jika sudah di voice
     if vc and vc.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
-    # Join / move
+    # Connect atau move (Pycord mode: tidak butuh audio driver)
     if vc:
         await vc.move_to(channel)
     else:
-        vc = await channel.connect(reconnect=True)
+        vc = await channel.connect(self_deaf=True)  # deaf untuk stabil
 
     await ctx.send("Satpam masuk voice! 🔊")
 
-    # Mulai anti-disconnect (RAW UDP)
-    bot.loop.create_task(voice_keepalive(vc))
+    # Keepalive monitoring
+    bot.loop.create_task(stay_alive(vc))
 
 
-async def voice_keepalive(vc):
-    """
-    Anti disconnect TANPA FFmpeg
-    Mengirim paket UDP kosong agar Discord menganggap bot aktif.
-    """
-    await asyncio.sleep(1)  # tunggu handshake selesai
-
-    while vc.is_connected():
-        try:
-            if vc.socket:
-                # Kirim paket UDP kosong langsung via socket voice
-                vc.socket.sendto(b'\x80\x78\x00\x01\x00\x00\x00\x00', vc.socket.socket.getpeername())
-        except Exception as e:
-            print("VOICE KEEPALIVE ERROR:", e)
-
-        await asyncio.sleep(5)  # kirim tiap 5 detik
+async def stay_alive(vc):
+    """Pastikan bot reconnect jika terlempar."""
+    while True:
+        await asyncio.sleep(5)
+        if not vc.is_connected():
+            try:
+                # Auto reconnect
+                await vc.channel.connect(self_deaf=True)
+                print("Satpam auto reconnect ke voice")
+            except:
+                pass
 
 
 @bot.command()
 async def tidur(ctx):
-    vc = ctx.voice_client
-    if vc:
-        await vc.disconnect()
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
         await ctx.send("Satpam izin tidur 😴")
     else:
         await ctx.send("Satpam tidak ada di voice!")
+
         
 # ================= MINIGAME BATU KERTAS GUNTING 🎮 ================= #
 
