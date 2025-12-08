@@ -26,13 +26,7 @@ lose_lines = [
 ]
 
 # ================= SATPAM VOICE PROTECT 🎧 ================= #
-# Silent audio dari file lokal
-SILENT_AUDIO = "audio/silence.opus"
-
-
-@bot.event
-async def on_ready():
-    print(f"Bot online sebagai {bot.user}")
+SILENT_FILE = "audio/silence.opus"
 
 
 @bot.command()
@@ -41,55 +35,55 @@ async def satpam(ctx):
         return await ctx.send("Kamu harus ada di voice channel dulu!")
 
     channel = ctx.author.voice.channel
-    voice_client = ctx.voice_client
+    vc = ctx.voice_client
 
-    if voice_client and voice_client.channel == channel:
+    # Jika sudah di channel tersebut
+    if vc and vc.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
-    if voice_client:
-        await voice_client.move_to(channel)
+    # Connect atau move
+    if vc:
+        await vc.move_to(channel)
     else:
-        voice_client = await channel.connect()
+        vc = await channel.connect(reconnect=True)
 
     await ctx.send("Satpam masuk voice! 🔊")
 
-    # Stop audio jika sedang jalan
-    if voice_client.is_playing():
-        voice_client.stop()
+    # Stop jika ada audio sebelumnya
+    if vc.is_playing():
+        vc.stop()
 
-    # Load audio dari file lokal
-    try:
-        source = discord.FFmpegOpusAudio(
-            SILENT_AUDIO,
-            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-            options="-vn"
-        )
-    except Exception as e:
-        print("FFmpeg error:", e)
-        return await ctx.send("Gagal memainkan audio silent! ❌")
-
-    # Loop otomatis
+    # Loop audio
     def loop(err):
         if err:
-            print("Loop error:", err)
-        try:
-            vc = ctx.voice_client
-            if vc and not vc.is_playing():
-                vc.play(discord.FFmpegOpusAudio(SILENT_AUDIO), after=loop)
-        except:
-            pass
+            print("loop error:", err)
+        vcc = ctx.voice_client
+        if vcc:
+            try:
+                vcc.play(
+                    discord.FFmpegPCMAudio(SILENT_FILE),
+                    after=loop
+                )
+            except:
+                pass
 
-    voice_client.play(source, after=loop)
+    try:
+        vc.play(discord.FFmpegPCMAudio(SILENT_FILE), after=loop)
+    except Exception as e:
+        print("FFmpeg error:", e)
+        return await ctx.send("⚠ FFmpeg tidak ditemukan!")
 
 
 @bot.command()
 async def tidur(ctx):
-    voice_client = ctx.voice_client
-    if voice_client:
-        await voice_client.disconnect()
-        await ctx.send("Satpam izin tidur dulu 😴")
+    vc = ctx.voice_client
+    if vc:
+        await vc.disconnect()
+        await ctx.send("Satpam izin tidur 😴")
     else:
         await ctx.send("Satpam tidak ada di voice!")
+
+        
 # ================= MINIGAME BATU KERTAS GUNTING 🎮 ================= #
 
 choices = {
