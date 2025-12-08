@@ -10,9 +10,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# URL audio silent (1 detik)
-AUDIO_URL = "https://raw.githubusercontent.com/anars/blank-audio/master/1-second-of-silence.mp3"
-
 # Leaderboard skor duel
 scores = {}
 
@@ -29,10 +26,15 @@ lose_lines = [
 ]
 
 # ================= SATPAM VOICE PROTECT 🎧 ================= #
+AUDIO_URL = "https://raw.githubusercontent.com/DUNCTECH/discord-silence/master/silence.opus"
+
+
+# ================= SATPAM VOICE PROTECT 🎧 ================= #
 
 @bot.event
 async def on_ready():
     print(f"Bot online sebagai {bot.user}")
+
 
 @bot.command()
 async def satpam(ctx):
@@ -42,9 +44,11 @@ async def satpam(ctx):
     channel = ctx.author.voice.channel
     voice_client = ctx.voice_client
 
+    # Jika bot sudah di channel yang sama
     if voice_client and voice_client.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
+    # Pindah atau join
     if voice_client:
         await voice_client.move_to(channel)
     else:
@@ -52,12 +56,32 @@ async def satpam(ctx):
 
     await ctx.send("Satpam masuk voice! 🔊")
 
-    source = await discord.FFmpegOpusAudio.from_probe(
-        AUDIO_URL,
-        method="fallback",
-        before_options="-stream_loop -1 -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-    )
-    voice_client.play(source, after=lambda e: print("Playing silence loop"))
+    # Jika sedang play, hentikan dulu
+    if voice_client.is_playing():
+        voice_client.stop()
+
+    try:
+        # Load silent audio OPUS (lebih stabil & bisa loop aman)
+        source = discord.FFmpegOpusAudio(
+            AUDIO_URL,
+            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            options="-vn"
+        )
+    except Exception as e:
+        print("FFmpeg error:", e)
+        return await ctx.send("Gagal memainkan audio silent! ❌")
+
+    # Loop otomatis saat selesai
+    def loop(error):
+        if error:
+            print("Error:", error)
+        try:
+            voice_client.play(source, after=loop)
+        except:
+            pass
+
+    # Mulai play
+    voice_client.play(source, after=loop)
 
 
 @bot.command()
