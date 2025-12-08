@@ -42,7 +42,7 @@ async def satpam(ctx):
     if vc and vc.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
-    # Pindah atau masuk
+    # Join / move
     if vc:
         await vc.move_to(channel)
     else:
@@ -50,20 +50,26 @@ async def satpam(ctx):
 
     await ctx.send("Satpam masuk voice! 🔊")
 
-    # Jalankan anti-disconnect loop
-    bot.loop.create_task(keepalive(vc))
+    # Mulai anti-disconnect (RAW UDP)
+    bot.loop.create_task(voice_keepalive(vc))
 
 
-async def keepalive(vc):
-    """Anti disconnect tanpa audio dan tanpa FFmpeg."""
+async def voice_keepalive(vc):
+    """
+    Anti disconnect TANPA FFmpeg
+    Mengirim paket UDP kosong agar Discord menganggap bot aktif.
+    """
+    await asyncio.sleep(1)  # tunggu handshake selesai
+
     while vc.is_connected():
         try:
-            # Kirim heartbeat paket kosong
-            vc.send_audio_packet(b'\xF8\xFF\xFE')  
+            if vc.socket:
+                # Kirim paket UDP kosong langsung via socket voice
+                vc.socket.sendto(b'\x80\x78\x00\x01\x00\x00\x00\x00', vc.socket.socket.getpeername())
         except Exception as e:
-            print("heartbeat error:", e)
+            print("VOICE KEEPALIVE ERROR:", e)
 
-        await asyncio.sleep(10)  # interval aman 10 detik
+        await asyncio.sleep(5)  # kirim tiap 5 detik
 
 
 @bot.command()
