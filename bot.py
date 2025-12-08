@@ -32,40 +32,24 @@ async def on_ready():
 
 @bot.command()
 async def satpam(ctx):
+    # Pastikan user ada di voice
     if not ctx.author.voice:
         return await ctx.send("Kamu harus ada di voice channel dulu!")
 
     channel = ctx.author.voice.channel
     vc = ctx.voice_client
 
-    # Jika sudah di voice
+    # Jika bot sudah di channel itu
     if vc and vc.channel == channel:
         return await ctx.send("Satpam sudah di sini bos!")
 
-    # Connect atau move (Pycord mode: tidak butuh audio driver)
+    # Join atau pindah channel
     if vc:
         await vc.move_to(channel)
     else:
-        vc = await channel.connect(self_deaf=True)  # deaf untuk stabil
+        vc = await channel.connect()  # self_deaf jangan dipakai jika error
 
     await ctx.send("Satpam masuk voice! 🔊")
-
-    # Keepalive monitoring
-    bot.loop.create_task(stay_alive(vc))
-
-
-async def stay_alive(vc):
-    """Pastikan bot reconnect jika terlempar."""
-    while True:
-        await asyncio.sleep(5)
-        if not vc.is_connected():
-            try:
-                # Auto reconnect
-                await vc.channel.connect(self_deaf=True)
-                print("Satpam auto reconnect ke voice")
-            except:
-                pass
-
 
 @bot.command()
 async def tidur(ctx):
@@ -74,7 +58,6 @@ async def tidur(ctx):
         await ctx.send("Satpam izin tidur 😴")
     else:
         await ctx.send("Satpam tidak ada di voice!")
-
         
 # ================= MINIGAME BATU KERTAS GUNTING 🎮 ================= #
 
