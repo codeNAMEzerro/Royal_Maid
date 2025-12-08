@@ -72,10 +72,11 @@ class RPSView(View):
         embed.add_field(name=self.p1.display_name, value=mapping[p1_c])
         embed.add_field(name=self.p2.display_name, value=mapping[p2_c])
         embed.add_field(name="Hasil Ronde", value=result, inline=False)
-        embed.add_field(name="Skor",
-                        value=f"{self.p1.display_name}: {self.p1_score}
-{self.p2.display_name}: {self.p2_score}",
-                        inline=False)
+        embed.add_field(
+            name="Skor",
+            value=f"{self.p1.display_name}: {self.p1_score}\n{self.p2.display_name}: {self.p2_score}",
+            inline=False
+        )
 
         await interaction.followup.send(embed=embed)
 
@@ -100,15 +101,16 @@ class RPSView(View):
         embed.add_field(name="Pemenang", value=str(winner), inline=False)
         embed.add_field(
             name="Final Score",
-            value=f"{self.p1.display_name}: {self.p1_score}
-{self.p2.display_name}: {self.p2_score}",
-            inline=False)
+            value=f"{self.p1.display_name}: {self.p1_score}\n{self.p2.display_name}: {self.p2_score}",
+            inline=False
+        )
 
         await interaction.followup.send(embed=embed)
         self.stop()
 
     def make_button(self, label, style, choice):
         btn = Button(label=label, style=style)
+
         async def callback(interaction):
             if interaction.user not in [self.p1, self.p2]:
                 return await interaction.response.send_message("Bukan giliran kamu!", ephemeral=True)
@@ -127,6 +129,7 @@ class RPSView(View):
 # ==========================
 @bot.command()
 async def satusatu(ctx, opponent: discord.Member = None, rounds: int = 3):
+
     if opponent is None:
         return await ctx.send("Gunakan: `!satusatu @user 3` (harus angka ganjil!)")
 
@@ -142,14 +145,14 @@ async def satusatu(ctx, opponent: discord.Member = None, rounds: int = 3):
     view.add_item(view.make_button("✋ Kertas", discord.ButtonStyle.success, "✋"))
     view.add_item(view.make_button("✌️ Gunting", discord.ButtonStyle.danger, "✌️"))
 
-    await ctx.send(
-        f"🎮 **Satu Satu Dimulai!**
-"
-        f"{ctx.author.mention} vs {opponent.mention}
-"
-        f"Best of **{rounds}** — siapa yang menang duluan **{(rounds//2)+1}** ronde!",
-        view=view
+    text = (
+        f"🎮 **Satu Satu Dimulai!**\n"
+        f"{ctx.author.mention} vs {opponent.mention}\n"
+        f"Best of **{rounds}** — siapa yang menang duluan **{(rounds//2)+1}** ronde!"
     )
+
+    await ctx.send(text, view=view)
+
 
 # ==========================
 #     RUN BOT
