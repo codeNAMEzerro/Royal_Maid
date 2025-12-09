@@ -183,5 +183,6 @@ async def wd(interaction):
 # ==============================
 # RUN BOT
 # ==============================
+import os
 init_db()
-bot.run("TOKEN_BOT_DISCORD")
+bot.run(os.getenv("TOKEN_BOT_DISCORD"))
