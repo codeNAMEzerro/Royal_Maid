@@ -104,23 +104,23 @@ class MaidView(discord.ui.View):
 # ======================================================
 # MODAL STEP 1: NAMA
 # ======================================================
-class MaidNameModal(discord.ui.Modal, title="✨ EMPEROR MAID — Nama"):
-    nama = discord.ui.TextInput(
-        label="Nama",
-        placeholder="Masukkan nama",
-        required=True,
-        max_length=50
-    )
-
+class MaidNameModal(discord.ui.Modal):
     def __init__(self, tipe):
-        super().__init__()
+        super().__init__(title="✨ EMPEROR MAID — Nama")
         self.tipe = tipe
+
+        self.nama = discord.ui.TextInput(
+            label="Nama",
+            placeholder="Masukkan nama",
+            required=True,
+            max_length=50
+        )
+        self.add_item(self.nama)
 
     async def on_submit(self, interaction):
         await interaction.response.send_modal(
             MaidGelarModal(self.tipe, self.nama.value)
         )
-
 
 
 # ======================================================
