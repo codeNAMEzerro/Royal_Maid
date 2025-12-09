@@ -278,6 +278,101 @@ async def maid(ctx):
 
 
 # ======================================================
+# handler modal
+# ======================================================
+
+
+
+@bot.event
+async def on_interaction(interaction):
+    # Jika bukan modal, biarkan handler lain yg proses
+    if interaction.type != discord.InteractionType.modal_submit:
+        return
+
+    custom_id = interaction.data.get("custom_id")
+
+    # ===========================
+    # 1. INPUT NAMA
+    # ===========================
+    if custom_id == "input_nama":
+        nama = interaction.data["components"][0]["components"][0]["value"]
+
+        # Simpan ke memory session user
+        user_session[interaction.user.id] = {"nama": nama}
+
+        # Lanjut ke modal gelar
+        await interaction.response.send_modal(gelar_modal())
+        return
+
+    # ===========================
+    # 2. INPUT GELAR
+    # ===========================
+    if custom_id == "input_gelar":
+        gelar = interaction.data["components"][0]["components"][0]["value"]
+
+        user_session[interaction.user.id]["gelar"] = gelar
+
+        # Lanjut pilih item
+        await interaction.response.send_message(
+            "Silahkan pilih item:",
+            view=item_select_menu(),
+            ephemeral=True
+        )
+        return
+
+    # ===========================
+    # 3. INPUT JUMLAH
+    # ===========================
+    if custom_id == "input_jumlah":
+        jumlah = int(interaction.data["components"][0]["components"][0]["value"])
+
+        user_session[interaction.user.id]["jumlah"] = jumlah
+
+        await interaction.response.send_modal(keterangan_modal())
+        return
+
+    # ===========================
+    # 4. INPUT KETERANGAN
+    # ===========================
+    if custom_id == "input_keterangan":
+        ket = interaction.data["components"][0]["components"][0]["value"]
+        user_data = user_session.get(interaction.user.id, {})
+
+        operation = user_data.get("operation")  # "deposit" / "withdraw"
+        nama = user_data.get("nama")
+        gelar = user_data.get("gelar")
+        item = user_data.get("item")
+        jumlah = user_data.get("jumlah")
+
+        # Kirim log
+        channel_id = LOG_DEPOSIT if operation == "deposit" else LOG_WITHDRAW
+        log_channel = bot.get_channel(channel_id)
+
+        embed = discord.Embed(
+            title="📦 EMPEROR MAID — Laporan",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="Nama", value=nama, inline=False)
+        embed.add_field(name="Gelar", value=gelar, inline=False)
+        embed.add_field(name="Item", value=item, inline=False)
+        embed.add_field(name="Jumlah", value=str(jumlah), inline=False)
+        embed.add_field(name="Keterangan", value=ket, inline=False)
+        embed.set_footer(text=f"{operation.upper()} — {interaction.user}", icon_url=interaction.user.display_avatar.url)
+
+        await log_channel.send(embed=embed)
+
+        # Update database
+        update_item(item, jumlah if operation=="deposit" else -jumlah)
+
+        # Update brankas display
+        await update_brankas_display()
+
+        await interaction.response.send_message("✔ Selesai!", ephemeral=True)
+        return
+
+
+
+# ======================================================
 # RUN BOT
 # ======================================================
 init_db()
