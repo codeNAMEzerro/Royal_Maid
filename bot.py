@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 from datetime import datetime
 import os
 
@@ -16,22 +15,23 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 # ======================================================
-# GENERATOR EMBED BRANGKAS
+# GENERATE BRANGKAS EMBED
 # ======================================================
 def generate_embed():
     embed = discord.Embed(
         title="💎 BRANGKAS EMPEROR",
-        description="Status brangkas keluarga EMPIRE.\nSemua data diperbarui secara otomatis.",
+        description="Status brangkas keluarga EMPIRE.\nSemua data diperbarui otomatis.",
         color=discord.Color.purple()
     )
 
-    embed.set_thumbnail(url="https://i.imgur.com/h6Atb5T.png")  # avatar maid cantik
+    embed.set_thumbnail(url="https://i.imgur.com/h6Atb5T.png")
 
     for kategori, daftar in ITEMS.items():
         teks = ""
         for item in daftar:
             jumlah = get_item(item)
             teks += f"**{item}** : `{jumlah}`\n"
+
         embed.add_field(
             name=f"👑 {kategori}",
             value=teks,
@@ -43,42 +43,38 @@ def generate_embed():
 
 
 # ======================================================
-# ON READY
+# EVENT: BOT SIAP
 # ======================================================
 @bot.event
 async def on_ready():
     print(f"Bot online sebagai {bot.user}")
-    try:
-        await bot.tree.sync()
-        print("Slash commands synced.")
-    except:
-        pass
+    await bot.tree.sync()
+    print("Slash commands synced.")
 
 
 # ======================================================
-# SETUP BRANGKAS
+# COMMAND: SETUP BRANGKAS
 # ======================================================
 @bot.command()
 async def setupbrangkas(ctx):
     guild = ctx.guild
 
     category = await guild.create_category("BRANGKAS EMPEROR")
-
     ch_brangkas = await category.create_text_channel("BRANGKAS EMPEROR")
-    ch_dp = await category.create_text_channel("Log Deposit")
-    ch_wd = await category.create_text_channel("Log Withdrawal")
-    laporan = await category.create_text_channel("Laporan")
+    await category.create_text_channel("Log Deposit")
+    await category.create_text_channel("Log Withdrawal")
+    await category.create_text_channel("Laporan")
 
     msg = await ch_brangkas.send(embed=generate_embed())
 
     set_meta("brangkas_message", str(msg.id))
     set_meta("brangkas_channel", str(ch_brangkas.id))
 
-    await ctx.send("Brangkas EMPEROR siap dipakai!")
+    await ctx.send("✔ Brangkas EMPEROR siap dipakai!")
 
 
 # ======================================================
-# CLASS VIEW -> PILIHAN AWAL (DEPOSIT/WITHDRAWAL)
+# VIEW PEMILIHAN AWAL (DEPOSIT / WITHDRAW)
 # ======================================================
 class MaidSelect(discord.ui.Select):
     def __init__(self):
@@ -88,19 +84,15 @@ class MaidSelect(discord.ui.Select):
         ]
 
         super().__init__(
-            placeholder="Pilih layanan yang kamu perlukan...",
+            placeholder="Pilih layanan...",
             min_values=1,
             max_values=1,
             options=options
         )
 
-    async def callback(self, interaction: discord.Interaction):
-        pilihan = self.values[0]
-
-        if pilihan == "Deposit":
-            await interaction.response.send_modal(MaidNameModal("deposit"))
-        else:
-            await interaction.response.send_modal(MaidNameModal("withdrawal"))
+    async def callback(self, interaction):
+        tipe = "deposit" if self.values[0] == "Deposit" else "withdrawal"
+        await interaction.response.send_modal(MaidNameModal(tipe))
 
 
 class MaidView(discord.ui.View):
@@ -110,40 +102,44 @@ class MaidView(discord.ui.View):
 
 
 # ======================================================
-# STEP 1 — NAMA
+# MODAL STEP 1: NAMA
 # ======================================================
 class MaidNameModal(discord.ui.Modal):
     def __init__(self, tipe):
-        super().__init__(title="✨ EMPEROR MAID — Input Nama")
+        super().__init__(title="✨ EMPEROR MAID — Nama")
         self.tipe = tipe
-        self.nama = discord.ui.TextInput(label="Nama", placeholder="Masukkan nama...")
+
+        self.nama = discord.ui.TextInput(label="Nama")
         self.add_item(self.nama)
 
     async def on_submit(self, interaction):
-        await interaction.response.send_modal(MaidGelarModal(self.tipe, self.nama.value))
+        await interaction.response.send_modal(
+            MaidGelarModal(self.tipe, self.nama.value)
+        )
 
 
 # ======================================================
-# STEP 2 — GELAR
+# MODAL STEP 2: GELAR
 # ======================================================
 class MaidGelarModal(discord.ui.Modal):
     def __init__(self, tipe, nama):
-        super().__init__(title="✨ EMPEROR MAID — Input Gelar")
+        super().__init__(title="✨ EMPEROR MAID — Gelar")
         self.tipe = tipe
         self.nama = nama
-        self.gelar = discord.ui.TextInput(label="Gelar", placeholder="Masukkan gelar...")
+
+        self.gelar = discord.ui.TextInput(label="Gelar")
         self.add_item(self.gelar)
 
     async def on_submit(self, interaction):
         await interaction.response.send_message(
-            "Pilih item:",
+            "Pilih item yang akan diproses:",
             view=ItemSelectView(self.tipe, self.nama, self.gelar.value),
             ephemeral=True
         )
 
 
 # ======================================================
-# STEP 3 — PILIH ITEM
+# MEMILIH ITEM
 # ======================================================
 class ItemSelect(discord.ui.Select):
     def __init__(self, tipe, nama, gelar):
@@ -156,14 +152,13 @@ class ItemSelect(discord.ui.Select):
             for item in kategori:
                 options.append(discord.SelectOption(label=item))
 
-        super().__init__(
-            placeholder="Pilih item...",
-            options=options
-        )
+        super().__init__(placeholder="Pilih item...", options=options)
 
     async def callback(self, interaction):
         await interaction.response.send_modal(
-            MaidJumlahModal(self.tipe, self.nama, self.gelar, self.values[0])
+            MaidJumlahModal(
+                self.tipe, self.nama, self.gelar, self.values[0]
+            )
         )
 
 
@@ -174,7 +169,7 @@ class ItemSelectView(discord.ui.View):
 
 
 # ======================================================
-# STEP 4 — JUMLAH
+# JUMLAH
 # ======================================================
 class MaidJumlahModal(discord.ui.Modal):
     def __init__(self, tipe, nama, gelar, item):
@@ -184,21 +179,20 @@ class MaidJumlahModal(discord.ui.Modal):
         self.gelar = gelar
         self.item = item
 
-        self.jumlah = discord.ui.TextInput(label="Jumlah", placeholder="Masukkan angka...")
+        self.jumlah = discord.ui.TextInput(label="Jumlah")
         self.add_item(self.jumlah)
 
     async def on_submit(self, interaction):
         await interaction.response.send_modal(
             MaidKetModal(
-                self.tipe,
-                self.nama, self.gelar,
+                self.tipe, self.nama, self.gelar,
                 self.item, int(self.jumlah.value)
             )
         )
 
 
 # ======================================================
-# STEP 5 — KETERANGAN
+# MODAL TERAKHIR: KETERANGAN
 # ======================================================
 class MaidKetModal(discord.ui.Modal):
     def __init__(self, tipe, nama, gelar, item, jumlah):
@@ -214,28 +208,28 @@ class MaidKetModal(discord.ui.Modal):
 
     async def on_submit(self, interaction):
         now = datetime.now().strftime("%d-%m-%Y %H:%M")
+        guild = interaction.guild
 
-        # CHANNEL LOG
-        if self.tipe == "deposit":
-            log_ch = discord.utils.get(interaction.guild.channels, name="Log Deposit")
-        else:
-            log_ch = discord.utils.get(interaction.guild.channels, name="Log Withdrawal")
+        log_ch = discord.utils.get(
+            guild.channels,
+            name="Log Deposit" if self.tipe == "deposit" else "Log Withdrawal"
+        )
 
-        # CEK STOK SDA WD
+        # CEK STOK UNTUK WD
         current = get_item(self.item)
-
         if self.tipe == "withdrawal" and self.jumlah > current:
             return await interaction.response.send_message(
-                f"❌ Stok `{self.item}` tidak cukup!\nSaat ini tersedia: `{current}`",
+                f"❌ Stok `{self.item}` tidak cukup!\nSaat ini: `{current}`",
                 ephemeral=True
             )
 
-        # SIMPAN DATABASE
+        # SIMPAN PERUBAHAN INVENTORY
         if self.tipe == "deposit":
             set_item(self.item, current + self.jumlah)
         else:
             set_item(self.item, current - self.jumlah)
 
+        # SIMPAN LOG
         add_log(
             self.tipe, self.nama, self.gelar,
             self.item, self.jumlah,
@@ -253,10 +247,10 @@ class MaidKetModal(discord.ui.Modal):
             f"• Waktu: {now}"
         )
 
-        # UPDATE BRANGKAS
+        # UPDATE EMBED BRANGKAS
         msg_id = int(get_meta("brangkas_message"))
         ch_id = int(get_meta("brangkas_channel"))
-        ch = interaction.guild.get_channel(ch_id)
+        ch = guild.get_channel(ch_id)
         msg = await ch.fetch_message(msg_id)
         await msg.edit(embed=generate_embed())
 
@@ -273,103 +267,8 @@ async def maid(ctx):
         description="Ada yang bisa ku bantu hari ini?\nSilakan pilih layanan di bawah ini.",
         color=discord.Color.purple()
     )
-    embed.set_thumbnail(url="https://i.imgur.com/h6Atb5T.png")  # avatar maid cantik
+    embed.set_thumbnail(url="https://i.imgur.com/h6Atb5T.png")
     await ctx.send(embed=embed, view=MaidView())
-
-
-# ======================================================
-# handler modal
-# ======================================================
-
-
-
-@bot.event
-async def on_interaction(interaction):
-    # Jika bukan modal, biarkan handler lain yg proses
-    if interaction.type != discord.InteractionType.modal_submit:
-        return
-
-    custom_id = interaction.data.get("custom_id")
-
-    # ===========================
-    # 1. INPUT NAMA
-    # ===========================
-    if custom_id == "input_nama":
-        nama = interaction.data["components"][0]["components"][0]["value"]
-
-        # Simpan ke memory session user
-        user_session[interaction.user.id] = {"nama": nama}
-
-        # Lanjut ke modal gelar
-        await interaction.response.send_modal(gelar_modal())
-        return
-
-    # ===========================
-    # 2. INPUT GELAR
-    # ===========================
-    if custom_id == "input_gelar":
-        gelar = interaction.data["components"][0]["components"][0]["value"]
-
-        user_session[interaction.user.id]["gelar"] = gelar
-
-        # Lanjut pilih item
-        await interaction.response.send_message(
-            "Silahkan pilih item:",
-            view=item_select_menu(),
-            ephemeral=True
-        )
-        return
-
-    # ===========================
-    # 3. INPUT JUMLAH
-    # ===========================
-    if custom_id == "input_jumlah":
-        jumlah = int(interaction.data["components"][0]["components"][0]["value"])
-
-        user_session[interaction.user.id]["jumlah"] = jumlah
-
-        await interaction.response.send_modal(keterangan_modal())
-        return
-
-    # ===========================
-    # 4. INPUT KETERANGAN
-    # ===========================
-    if custom_id == "input_keterangan":
-        ket = interaction.data["components"][0]["components"][0]["value"]
-        user_data = user_session.get(interaction.user.id, {})
-
-        operation = user_data.get("operation")  # "deposit" / "withdraw"
-        nama = user_data.get("nama")
-        gelar = user_data.get("gelar")
-        item = user_data.get("item")
-        jumlah = user_data.get("jumlah")
-
-        # Kirim log
-        channel_id = LOG_DEPOSIT if operation == "deposit" else LOG_WITHDRAW
-        log_channel = bot.get_channel(channel_id)
-
-        embed = discord.Embed(
-            title="📦 EMPEROR MAID — Laporan",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Nama", value=nama, inline=False)
-        embed.add_field(name="Gelar", value=gelar, inline=False)
-        embed.add_field(name="Item", value=item, inline=False)
-        embed.add_field(name="Jumlah", value=str(jumlah), inline=False)
-        embed.add_field(name="Keterangan", value=ket, inline=False)
-        embed.set_footer(text=f"{operation.upper()} — {interaction.user}", icon_url=interaction.user.display_avatar.url)
-
-        await log_channel.send(embed=embed)
-
-        # Update database
-        update_item(item, jumlah if operation=="deposit" else -jumlah)
-
-        # Update brankas display
-        await update_brankas_display()
-
-        await interaction.response.send_message("✔ Selesai!", ephemeral=True)
-        return
-
 
 
 # ======================================================
