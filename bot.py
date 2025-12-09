@@ -184,4 +184,4 @@ async def wd(interaction):
 # RUN BOT
 # ==============================
 init_db()
-bot.run("TOKEN")
+bot.run("TOKEN_BOT_DISCORD")
