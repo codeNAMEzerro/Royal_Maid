@@ -72,4 +72,4 @@ async def carihama(ctx, server_keyword: str, *, player_keyword: str):
     embed.set_footer(text="Data publik FiveM • Experimental tracker")
     await ctx.send(embed=embed)
 
-bot.run(TOKEN_BOT_DISCORD)
+bot.run(os.getenv("TOKEN_BOT_DISCORD"))
