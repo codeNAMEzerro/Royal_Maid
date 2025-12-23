@@ -1,14 +1,18 @@
+import os
 import discord
 from discord.ext import commands
 import requests
 
-TOKEN = "TOKEN_BOT_KAMU"
+TOKEN = os.getenv("TOKEN_BOT_DISCORD")
+
+if not TOKEN:
+    raise Exception("ENV TOKEN_BOT_DISCORD belum diset di Railway")
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 FIVEM_SERVER_LIST = "https://servers-live.fivem.net/api/servers/streamed"
-MAX_SERVER_CHECK = 25  # biar ga overkill
+MAX_SERVER_CHECK = 25
 
 @bot.event
 async def on_ready():
@@ -16,7 +20,7 @@ async def on_ready():
 
 @bot.command()
 async def carihama(ctx, server_keyword: str, *, player_keyword: str):
-    await ctx.send("🔍 Mencari data server & player...")
+    await ctx.send("🔍 Mencari player...")
 
     try:
         servers = requests.get(FIVEM_SERVER_LIST, timeout=10).json()
@@ -25,7 +29,7 @@ async def carihama(ctx, server_keyword: str, *, player_keyword: str):
 
     hasil = []
 
-    for i, (server_id, server) in enumerate(servers.items()):
+    for i, (_, server) in enumerate(servers.items()):
         if i >= MAX_SERVER_CHECK:
             break
 
@@ -33,11 +37,11 @@ async def carihama(ctx, server_keyword: str, *, player_keyword: str):
         if server_keyword.lower() not in hostname:
             continue
 
-        ip = server.get("connectEndPoints", [])
-        if not ip:
+        endpoints = server.get("connectEndPoints", [])
+        if not endpoints:
             continue
 
-        players_url = f"http://{ip[0]}/players.json"
+        players_url = f"http://{endpoints[0]}/players.json"
 
         try:
             players = requests.get(players_url, timeout=3).json()
@@ -54,7 +58,7 @@ async def carihama(ctx, server_keyword: str, *, player_keyword: str):
                 })
 
     if not hasil:
-        return await ctx.send("❌ Tidak ada player yang cocok ditemukan.")
+        return await ctx.send("❌ Player tidak ditemukan.")
 
     embed = discord.Embed(
         title="🎮 Hasil Pencarian Player FiveM",
@@ -65,11 +69,11 @@ async def carihama(ctx, server_keyword: str, *, player_keyword: str):
     for h in hasil[:10]:
         embed.add_field(
             name=h["player"],
-            value=f"Server: {h['server']}\nPing: {h['ping']}ms",
+            value=f"{h['server']}\nPing: {h['ping']}ms",
             inline=False
         )
 
-    embed.set_footer(text="Data publik FiveM • Experimental tracker")
+    embed.set_footer(text="FiveM Public Tracker • Experimental")
     await ctx.send(embed=embed)
 
-bot.run(os.getenv("TOKEN_BOT_DISCORD"))
+bot.run(TOKEN)
