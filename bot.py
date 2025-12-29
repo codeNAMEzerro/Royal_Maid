@@ -1,20 +1,21 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import json
 import os
 from datetime import datetime
 
+# ===============================
+# KONFIGURASI
+# ===============================
 TOKEN = os.getenv("TOKEN_BOT_DISCORD")
+GUILD_ID = 1331868322710556704
+DATA_FILE = "brangkas.json"
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-DATA_FILE = "brangkas.json"
-
 
 # ===============================
 # DATA AWAL BRANGKAS
@@ -45,6 +46,9 @@ DEFAULT_BRANGKAS = {
     "Mushrom": 0
 }
 
+# ===============================
+# FILE HANDLER
+# ===============================
 def load_data():
     if not os.path.exists(DATA_FILE):
         with open(DATA_FILE, "w") as f:
@@ -116,7 +120,7 @@ def brangkas_embed(data):
     return embed
 
 # ===============================
-# SETUP CHANNEL
+# SETUP CHANNEL (PREFIX)
 # ===============================
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -125,29 +129,29 @@ async def setupbrangkas(ctx):
 
     category = await guild.create_category("BOT LAPORAN BRANGKAS")
     brangkas = await guild.create_text_channel("brangkas", category=category)
-    dp = await guild.create_text_channel("laporan-deposit", category=category)
-    wd = await guild.create_text_channel("laporan-withdrawal", category=category)
+    await guild.create_text_channel("laporan-deposit", category=category)
+    await guild.create_text_channel("laporan-withdrawal", category=category)
 
     data = load_data()
-    embed = brangkas_embed(data)
-    msg = await brangkas.send(embed=embed)
+    msg = await brangkas.send(embed=brangkas_embed(data))
     await msg.pin()
 
     await ctx.send("✅ Channel brangkas berhasil dibuat!")
 
 # ===============================
-# UPDATE BRANGKAS MESSAGE
+# UPDATE BRANGKAS
 # ===============================
 async def update_brangkas(guild):
-    data = load_data()
     channel = discord.utils.get(guild.text_channels, name="brangkas")
     if not channel:
         return
-    pinned = await channel.pins()
-    await pinned[0].edit(embed=brangkas_embed(data))
+    pins = await channel.pins()
+    if not pins:
+        return
+    await pins[0].edit(embed=brangkas_embed(load_data()))
 
 # ===============================
-# DEPOSIT & WITHDRAW FUNCTION
+# PROSES DP / WD
 # ===============================
 async def proses(interaction, tipe, items):
     data = load_data()
@@ -159,7 +163,10 @@ async def proses(interaction, tipe, items):
     desc = []
     for item, jumlah in items:
         if item not in data:
-            await interaction.response.send_message(f"❌ Item `{item}` tidak valid!", ephemeral=True)
+            await interaction.response.send_message(
+                f"❌ Item `{item}` tidak tersedia di brangkas!",
+                ephemeral=True
+            )
             return
         data[item] += jumlah if tipe == "DP" else -jumlah
         desc.append(f"{item} : {jumlah}")
@@ -168,23 +175,31 @@ async def proses(interaction, tipe, items):
     await update_brangkas(interaction.guild)
 
     embed = discord.Embed(
-        title=f"📥 DEPOSIT BRANGKAS" if tipe == "DP" else "📤 WITHDRAW BRANGKAS",
+        title="📥 DEPOSIT BRANGKAS" if tipe == "DP" else "📤 WITHDRAW BRANGKAS",
         color=0x2ecc71 if tipe == "DP" else 0xe74c3c
     )
     embed.add_field(name="Detail", value="\n".join(desc), inline=False)
     embed.set_footer(text=f"{interaction.user} | {waktu}")
 
     await channel.send(embed=embed)
-    await interaction.response.send_message("✅ Data berhasil dicatat!", ephemeral=True)
+    await interaction.response.send_message("✅ Berhasil dicatat.", ephemeral=True)
 
 # ===============================
-# SLASH COMMAND (CONTOH 1 ITEM)
+# SLASH COMMAND (GUILD)
 # ===============================
-@bot.tree.command(name="dpbrangkas")
+@bot.tree.command(
+    name="dpbrangkas",
+    description="Deposit item ke brangkas",
+    guild=discord.Object(id=GUILD_ID)
+)
 async def dpbrangkas(interaction: discord.Interaction, item: str, jumlah: int):
     await proses(interaction, "DP", [(item, jumlah)])
 
-@bot.tree.command(name="wdbrangkas")
+@bot.tree.command(
+    name="wdbrangkas",
+    description="Withdraw item dari brangkas",
+    guild=discord.Object(id=GUILD_ID)
+)
 async def wdbrangkas(interaction: discord.Interaction, item: str, jumlah: int):
     await proses(interaction, "WD", [(item, jumlah)])
 
@@ -193,7 +208,8 @@ async def wdbrangkas(interaction: discord.Interaction, item: str, jumlah: int):
 # ===============================
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    print("Bot Brangkas Emperor Online!")
+    guild = discord.Object(id=GUILD_ID)
+    await bot.tree.sync(guild=guild)
+    print("✅ Bot Brangkas Emperor ONLINE (Slash Command Aktif)")
 
 bot.run(TOKEN)
