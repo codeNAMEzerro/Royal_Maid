@@ -5,7 +5,7 @@ import json
 import os
 from datetime import datetime
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("TOKEN_BOT_DISCORD")
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
