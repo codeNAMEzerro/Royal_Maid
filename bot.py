@@ -8,9 +8,13 @@ from datetime import datetime
 TOKEN = os.getenv("TOKEN_BOT_DISCORD")
 
 intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 DATA_FILE = "brangkas.json"
+
 
 # ===============================
 # DATA AWAL BRANGKAS
